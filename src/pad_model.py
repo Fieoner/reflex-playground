@@ -241,11 +241,9 @@ class PadModel:
         for panel in self._model.panels.values():
             if panel.active and not panel.pressed:
                 panel.pressed = True
-                print(f"pressing: {panel.key}")
                 pyautogui.keyDown(panel.key)
             if not panel.active and panel.pressed:
                 panel.pressed = False
-                print(f"releasing: {panel.key}")
                 pyautogui.keyUp(panel.key)
 
     def set_saved(self) -> None:
