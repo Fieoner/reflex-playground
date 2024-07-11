@@ -38,24 +38,20 @@ class USBDeviceList:
 class HIDEndpointProcess(multiprocessing.Process):
     """Base class that manages a single HID endpoint in its own process."""
 
-    def __init__(self, pad_info: HIDInfo, serial: str):
+    def __init__(self, pad_info: HIDInfo, serial: str, device: usb.core.Device, lock: multiprocessing.Lock):
         super(HIDEndpointProcess, self).__init__()
         self._info = pad_info
         self._serial = serial
         self._data = multiprocessing.Array('i', self._info.BYTES)
         self._event = multiprocessing.Event()
-        self._device = None
+        self._device = device
+        self._lock = lock
         self.start()
 
     def terminate(self) -> None:
         super().terminate()
 
     def run(self) -> None:
-        self._device = USBDeviceList.get_device_by_serial(
-            self._info.VID, self._info.PID, self._serial
-        )
-        if self._device is None:
-            return
         while True:
             self._process()
 
@@ -75,8 +71,9 @@ class HIDReadProcess(HIDEndpointProcess):
     """Child class for reading data from an HID Endpoint."""
 
     def _process(self) -> None:
-        self._device: usb.core.Device
-        sensor_data = self._device.read(self._info.READ_EP, self._info.BYTES)
+        print("reading")
+        with self._lock:
+            sensor_data = self._device.read(self._info.READ_EP, self._info.BYTES)
         with self._data.get_lock():
             for i, v in enumerate(sensor_data):
                 self._data[i] = v
@@ -87,8 +84,9 @@ class HIDWriteProcess(HIDEndpointProcess):
     """Child class for writing data to an HID Endpoint."""
 
     def _process(self) -> None:
-        self._device: usb.core.Device
+        print("writing")
         with self._data.get_lock():
             data = [d for d in self._data]
-        self._device.write(self._info.WRITE_EP, data)
+        with self._lock:
+            self._device.write(self._info.WRITE_EP, data)
         self._event.set()

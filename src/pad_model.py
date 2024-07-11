@@ -1,6 +1,6 @@
 import dataclasses
 
-import keyboard
+import pyautogui
 
 Coord = tuple[int, int]
 Colour = tuple[int, int, int]
@@ -240,10 +240,10 @@ class PadModel:
         for panel in self._model.panels.values():
             if panel.active and not panel.pressed:
                 panel.pressed = True
-                keyboard.press(panel.key)
+                pyautogui.keyDown(panel.key)
             if not panel.active and panel.pressed:
                 panel.pressed = False
-                keyboard.release(panel.key)
+                pyautogui.keyUp(panel.key)
 
     def set_saved(self) -> None:
         self._model.updated = False

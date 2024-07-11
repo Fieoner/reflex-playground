@@ -3,6 +3,8 @@ from pad_model import Coord, PadModel
 from sensor_data_handler import SensorDataHandler
 from usb_controller import USBDeviceList, HIDReadProcess, HIDWriteProcess
 from usb_info import ReflexV2Info
+import multiprocessing
+import usb.core
 
 
 class ReflexPadInstance:
@@ -10,14 +12,32 @@ class ReflexPadInstance:
 
     def __init__(self, info: ReflexV2Info, serial: str, model: PadModel):
         self._serial = serial
-        self._read = HIDReadProcess(info, serial)
-        self._write = HIDWriteProcess(info, serial)
+        self._device = self.get_device_handle(info)
+        self._lock = multiprocessing.Lock()
+        self._read = HIDReadProcess(info, serial, self._device, self._lock)
+        self._write = HIDWriteProcess(info, serial, self._device, self._lock)
         self._sensors = SensorDataHandler(
             self._read.data, self._read.event
         )
         self._lights = LEDDataHandler(
             self._write.data, self._write.event, model
         )
+
+    def get_device_handle(self, info) -> usb.core.Device:
+        device = USBDeviceList.get_device_by_serial(
+            info.VID, info.PID, self._serial
+        )
+        if device is None:
+            print("no device")
+            return
+        try:
+            if device.is_kernel_driver_active(0):
+                device.detach_kernel_driver(0)
+            usb.util.claim_interface(device, 0)
+        except usb.core.USBError as e:
+            print(f"Could not detach kernel driver or claim interface: {e}")
+            return
+        return device
 
     def disconnect(self) -> None:
         self._read.terminate()
