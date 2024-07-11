@@ -71,7 +71,6 @@ class HIDReadProcess(HIDEndpointProcess):
     """Child class for reading data from an HID Endpoint."""
 
     def _process(self) -> None:
-        print("reading")
         with self._lock:
             sensor_data = self._device.read(self._info.READ_EP, self._info.BYTES)
         with self._data.get_lock():
@@ -84,7 +83,6 @@ class HIDWriteProcess(HIDEndpointProcess):
     """Child class for writing data to an HID Endpoint."""
 
     def _process(self) -> None:
-        print("writing")
         with self._data.get_lock():
             data = [d for d in self._data]
         with self._lock:
